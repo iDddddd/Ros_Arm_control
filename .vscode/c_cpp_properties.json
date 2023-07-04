@@ -1,0 +1,27 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/fins/catkin_ws/devel/include/**",
+        "/opt/ros/melodic/include/**",
+        "/home/fins/catkin_ws/src/atr_pkg/include/**",
+        "/home/fins/catkin_ws/src/imu_pkg/include/**",
+        "/home/fins/catkin_ws/src/serial_pkg/include/**",
+        "/home/fins/catkin_ws/src/ssr_pkg/include/**",
+        "/home/fins/catkin_ws/src/vel_pkg/include/**",
+        "/home/fins/catkin_ws/src/wpr_simulation/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
