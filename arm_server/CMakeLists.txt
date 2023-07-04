@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
         control_msgs
         actionlib
         moveit_msgs
+        sensor_msgs
         )
 
 catkin_package(
@@ -15,6 +16,7 @@ catkin_package(
         actionlib
         control_msgs
         moveit_msgs
+        sensor_msgs
 )
 
 include_directories(

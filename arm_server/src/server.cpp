@@ -4,12 +4,19 @@
 #include <ros/ros.h>
 #include <iostream>
 #include <actionlib/server/simple_action_server.h>
+#include "actionlib//server/server_goal_handle.h"
 #include <control_msgs/FollowJointTrajectoryAction.h>
+#include <control_msgs/FollowJointTrajectoryActionGoal.h>
+#include <control_msgs/FollowJointTrajectoryActionResult.h>
+#include <sensor_msgs/JointState.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <moveit_msgs/RobotTrajectory.h>
 #include <string.h>
+#include <vector>
+#include<fstream>
 
 using namespace std;
+// 重命名类型为 Server
 typedef actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction> Server;
 
 // 用于存储 moveit 发送出来的轨迹数据
@@ -20,11 +27,12 @@ void execute_callback(const control_msgs::FollowJointTrajectoryGoalConstPtr& goa
     // 1、解析提交的目标值
     int n_joints = goalPtr->trajectory.joint_names.size();
     int n_tra_Points = goalPtr->trajectory.points.size();
+    fstream file;
 
     moveit_tra.joint_trajectory.header.frame_id = goalPtr->trajectory.header.frame_id;
     moveit_tra.joint_trajectory.joint_names = goalPtr->trajectory.joint_names;
     moveit_tra.joint_trajectory.points.resize(n_tra_Points);
-
+    file.open("/home/fins/catkin_ws/src/arm_server/src/data.txt",ios::app);
     for(int i=0; i<n_tra_Points; i++) // 遍历每组路点
     {
         moveit_tra.joint_trajectory.points[i].positions.resize(n_joints);
@@ -37,8 +45,12 @@ void execute_callback(const control_msgs::FollowJointTrajectoryGoalConstPtr& goa
             moveit_tra.joint_trajectory.points[i].positions[j] = goalPtr->trajectory.points[i].positions[j];
             moveit_tra.joint_trajectory.points[i].velocities[j] = goalPtr->trajectory.points[i].velocities[j];
             moveit_tra.joint_trajectory.points[i].accelerations[j] = goalPtr->trajectory.points[i].accelerations[j];
+
+            file << moveit_tra.joint_trajectory.points[i].positions[j] << " ";
         }
+        file << endl;
     }
+    file.close();
 
     cout << "The trajectory data is:" << "********************************************" << endl;
     cout << moveit_tra;
@@ -51,6 +63,7 @@ void execute_callback(const control_msgs::FollowJointTrajectoryGoalConstPtr& goa
 }
 
 
+
 int main(int argc, char *argv[])
 {
     ros::init(argc,argv,"moveit_action_server");
@@ -60,7 +73,6 @@ int main(int argc, char *argv[])
     Server moveit_server(nh,"arm_position_controller/follow_joint_trajectory", boost::bind(&execute_callback, _1, &moveit_server), false);
     // 手动启动服务器
     moveit_server.start();
-
     ros::spin();
     return 0;
 }
