@@ -65,13 +65,14 @@ void Serial::SerialRead()
 
     FD_ZERO(&fs_read);
     FD_SET(fd,&fs_read);
-
+    bool flag = false;
     //使用select实现串口在有数据来时才read
 
         fs_sel = select(fd+1,&fs_read,NULL,NULL,NULL);
         if(fs_sel == 1) {
             len = read(fd, rx_buff, BUFF_SIZE);
-            getMessage(rx_buff, len);
+            if(rx_buff[0] == 0x7A && !flag)flag = true;
+            if(flag)getMessage(rx_buff, len);
         }
         else{
             FD_ZERO(&fs_read);
@@ -98,11 +99,12 @@ bool LRC_check(uint8_t* array, size_t size){
     else return false;
 }
 
-int msg_ptr{0};
-uint8_t message[82];
+
 
 
 void getMessage(uint8_t* rx_buff, int buffer_size){
+    int msg_ptr2{0};
+    uint8_t message2[82];
     static int res_len = 0;
     static bool flag_getlen = true;
 
@@ -112,22 +114,20 @@ void getMessage(uint8_t* rx_buff, int buffer_size){
                 res_len += rx_buff[i] + 1; // data length + byte of content + LRC byte
                 flag_getlen = false;
             }
-            message[msg_ptr] = rx_buff[i];
-            msg_ptr ++;
+            message2[msg_ptr2] = rx_buff[i];
+            msg_ptr2 ++;
             res_len --;
         }
         else {
-            /* finish receiving one single message */
-            if (msg_ptr > 0) {
-                if(LRC_check(message, msg_ptr))
-                {
-                    for(int j = 0; j < msg_ptr; j++)
-                        std::cout<<std::hex<<message[j]<<std::endl;
-                }
-                //printHexArray(message, msg_ptr);
-                msg_ptr = 0;
+            /* finish receiving one single message2 */
+            if (msg_ptr2 > 0) {
+                for(int j = 0; j < msg_ptr2; j++)
+                    std::cout << std::hex << message2[j] << std::endl;
+                std::cout<< std::endl;
+                //printHexArray(message2, msg_ptr);
+                msg_ptr2 = 0;
             }
-            /* start receiving one single message */
+            /* start receiving one single message2 */
             if (rx_buff[i] == 0x7A) {
                 res_len = 3; // distance between byte of head and byte of length
                 flag_getlen = true;

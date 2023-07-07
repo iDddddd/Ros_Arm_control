@@ -58,6 +58,7 @@ int main (int argc, char** argv)
     while (ros::ok()) {
 
         ser.SerialRead();
+
         for(int i = 0; i < ser.len; i++) {
             printf("%x ", ser.rx_buff[i]);
             static int count = 0;

@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
         actionlib
         moveit_msgs
         sensor_msgs
+
         )
 
 catkin_package(
@@ -20,10 +21,11 @@ catkin_package(
 )
 
 include_directories(
+        inc
         ${catkin_INCLUDE_DIRS}
 )
 
-add_executable( arm_server src/server.cpp)
+add_executable( arm_server src/server.cpp src/SerialCommunication.cpp src/Upper.cpp)
 
 target_link_libraries( arm_server
         ${catkin_LIBRARIES}
