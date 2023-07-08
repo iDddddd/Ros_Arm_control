@@ -8,16 +8,12 @@ find_package(catkin REQUIRED COMPONENTS
         actionlib
         moveit_msgs
         sensor_msgs
-
+        geometry_msgs
+        message_generation
         )
 
 catkin_package(
-        CATKIN_DEPENDS
-        std_msgs
-        actionlib
-        control_msgs
-        moveit_msgs
-        sensor_msgs
+
 )
 
 include_directories(

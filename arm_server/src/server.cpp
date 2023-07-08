@@ -16,7 +16,7 @@
 using namespace std;
 // 重命名类型为 Server
 typedef actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction> Server;
-Serial ser;
+//Serial ser;
 // 用于存储 moveit 发送出来的轨迹数据
 moveit_msgs::RobotTrajectory moveit_tra;
 
@@ -25,12 +25,12 @@ void execute_callback(const control_msgs::FollowJointTrajectoryGoalConstPtr& goa
     // 1、解析提交的目标值
     int n_joints = goalPtr->trajectory.joint_names.size();
     int n_tra_Points = goalPtr->trajectory.points.size();
-   // fstream file;
+    fstream file;
     f_u8_t position[3];
     moveit_tra.joint_trajectory.header.frame_id = goalPtr->trajectory.header.frame_id;
     moveit_tra.joint_trajectory.joint_names = goalPtr->trajectory.joint_names;
     moveit_tra.joint_trajectory.points.resize(n_tra_Points);
-   // file.open("/home/fins/catkin_ws/src/arm_server/src/data.txt",ios::app);
+    file.open("/home/fins/catkin_ws/src/arm_server/src/data.txt",ios::out);
     for(int i=0; i<n_tra_Points; i++) // 遍历每组路点
     {
         moveit_tra.joint_trajectory.points[i].positions.resize(n_joints);
@@ -44,12 +44,15 @@ void execute_callback(const control_msgs::FollowJointTrajectoryGoalConstPtr& goa
             moveit_tra.joint_trajectory.points[i].velocities[j] = goalPtr->trajectory.points[i].velocities[j];
             moveit_tra.joint_trajectory.points[i].accelerations[j] = goalPtr->trajectory.points[i].accelerations[j];
             position[j].f = moveit_tra.joint_trajectory.points[i].positions[j];
-          //  file << moveit_tra.joint_trajectory.points[i].positions[j] << " ";
+
+            file << moveit_tra.joint_trajectory.points[i].positions[j] << " ";
+            file << moveit_tra.joint_trajectory.points[i].velocities[j] << " ";
+            file << moveit_tra.joint_trajectory.points[i].accelerations[j] << " ";
         }
-        SendPosition(ser,position);
-      //  file <<moveit_tra.joint_trajectory.points[i].time_from_start << endl;
+       // SendPosition(ser,position);
+        file <<moveit_tra.joint_trajectory.points[i].time_from_start << endl;
     }
-  //  file.close();
+    file.close();
 
     cout << "The trajectory data is:" << "********************************************" << endl;
     cout << moveit_tra;
