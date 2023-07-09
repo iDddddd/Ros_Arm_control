@@ -1,36 +1,29 @@
 //
-// Created by fins on 23-7-3.
+// Created by fins on 23-7-9.
 //
-#include <ros/ros.h>
-#include <iostream>
-#include <actionlib/server/simple_action_server.h>
-#include <control_msgs/FollowJointTrajectoryAction.h>
-#include <sensor_msgs/JointState.h>
-#include <std_msgs/Float32MultiArray.h>
-#include <moveit_msgs/RobotTrajectory.h>
-#include <string.h>
-#include <fstream>
-#include "../inc/SerialCommunication.h"
-#include "../inc/Upper.h"
 
-using namespace std;
-// 重命名类型为 Server
-typedef actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction> Server;
+#include "Server.h"
+
+
+
 //Serial ser;
 // 用于存储 moveit 发送出来的轨迹数据
-moveit_msgs::RobotTrajectory moveit_tra;
 
-void execute_callback(const control_msgs::FollowJointTrajectoryGoalConstPtr& goalPtr, Server* moveit_server)
+void FollowJointTrajectoryAction::execute_callback(const control_msgs::FollowJointTrajectoryGoalConstPtr& goalPtr, Server* moveit_server)
 {
     // 1、解析提交的目标值
     int n_joints = goalPtr->trajectory.joint_names.size();
     int n_tra_Points = goalPtr->trajectory.points.size();
-    fstream file;
+   // fstream file;
+
     f_u8_t position[3];
+    static sensor_msgs::JointState joint_state;
+
+
     moveit_tra.joint_trajectory.header.frame_id = goalPtr->trajectory.header.frame_id;
     moveit_tra.joint_trajectory.joint_names = goalPtr->trajectory.joint_names;
     moveit_tra.joint_trajectory.points.resize(n_tra_Points);
-    file.open("/home/fins/catkin_ws/src/arm_server/src/data.txt",ios::out);
+   // file.open("/home/fins/catkin_ws/src/arm_server/src/data.txt",ios::out);
     for(int i=0; i<n_tra_Points; i++) // 遍历每组路点
     {
         moveit_tra.joint_trajectory.points[i].positions.resize(n_joints);
@@ -45,14 +38,26 @@ void execute_callback(const control_msgs::FollowJointTrajectoryGoalConstPtr& goa
             moveit_tra.joint_trajectory.points[i].accelerations[j] = goalPtr->trajectory.points[i].accelerations[j];
             position[j].f = moveit_tra.joint_trajectory.points[i].positions[j];
 
-            file << moveit_tra.joint_trajectory.points[i].positions[j] << " ";
-            file << moveit_tra.joint_trajectory.points[i].velocities[j] << " ";
-            file << moveit_tra.joint_trajectory.points[i].accelerations[j] << " ";
+          //  file << moveit_tra.joint_trajectory.points[i].positions[j] << " ";
+         //   file << moveit_tra.joint_trajectory.points[i].velocities[j] << " ";
+          //  file << moveit_tra.joint_trajectory.points[i].accelerations[j] << " ";
+            //发布joint_states话题
+            joint_state.header.stamp = ros::Time::now();
+            joint_state.name.resize(3);
+            joint_state.position.resize(3);
+            joint_state.name[0] ="joint1";
+            joint_state.position[0] = moveit_tra.joint_trajectory.points[i].positions[0];
+            joint_state.name[1] ="joint2";
+            joint_state.position[1] = moveit_tra.joint_trajectory.points[i].positions[1];
+            joint_state.name[2] ="joint3";
+            joint_state.position[2] = moveit_tra.joint_trajectory.points[i].positions[2];
+            joint_pub.publish(joint_state);
         }
-       // SendPosition(ser,position);
-        file <<moveit_tra.joint_trajectory.points[i].time_from_start << endl;
+        // 将目标值发送给下位机
+        // SendPosition(ser,position);
+     //   file <<moveit_tra.joint_trajectory.points[i].time_from_start << endl;
     }
-    file.close();
+  //  file.close();
 
     cout << "The trajectory data is:" << "********************************************" << endl;
     cout << moveit_tra;
@@ -69,12 +74,9 @@ void execute_callback(const control_msgs::FollowJointTrajectoryGoalConstPtr& goa
 int main(int argc, char *argv[])
 {
     ros::init(argc,argv,"moveit_action_server");
-    ros::NodeHandle nh;
 
-    // 创建 action 对象(NodeHandle，话题名称，回调函数解析传入的目标值，服务器是否自启动)
-    Server moveit_server(nh,"arm_position_controller/follow_joint_trajectory", boost::bind(&execute_callback, _1, &moveit_server), false);
-    // 手动启动服务器
-    moveit_server.start();
+    FollowJointTrajectoryAction moveit_action("arm_position_controller/follow_joint_trajectory");
+
     ros::spin();
     return 0;
 }

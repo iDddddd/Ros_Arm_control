@@ -21,7 +21,7 @@ include_directories(
         ${catkin_INCLUDE_DIRS}
 )
 
-add_executable( arm_server src/server.cpp src/SerialCommunication.cpp src/Upper.cpp)
+add_executable( arm_server src/Server.cpp src/SerialCommunication.cpp src/Upper.cpp)
 
 target_link_libraries( arm_server
         ${catkin_LIBRARIES}

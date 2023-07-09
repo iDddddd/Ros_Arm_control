@@ -2,7 +2,7 @@
 // Created by fins on 23-7-5.
 //
 
-#include "../inc/Upper.h"
+#include "Upper.h"
 
 /**
  * 从串口读取数据

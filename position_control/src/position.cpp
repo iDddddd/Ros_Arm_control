@@ -17,24 +17,32 @@ int main(int argc, char **argv)
     moveit::planning_interface::MoveGroupInterface arm("arm");
 
     geometry_msgs::Pose target_pose;
-    target_pose.orientation.w =  0.709024;
-    target_pose.position.x = -0.00865156;
-    target_pose.position.y = -0.36234;
-    target_pose.position.z = 0.034479;
-    arm.setPoseTarget(target_pose);
-
+    /*target_pose.orientation.w =  0.687399;
+    target_pose.orientation.z =  0.72628;
+    target_pose.position.x = 0.13167;
+    target_pose.position.y = 0.0810678;
+    target_pose.position.z = 0.219535;*/
+    target_pose.orientation.w =  -0.3098;
+    target_pose.orientation.z =  0.9507;
+    target_pose.position.x = -0.9606;
+    target_pose.position.y = -0.2916;
+    target_pose.position.z = 0.149658;
+   // arm.setPoseTarget(target_pose,"gripper");
+    //arm.setNamedTarget("fold");
     arm.setApproximateJointValueTarget(target_pose,"gripper");
 
     moveit::planning_interface::MoveGroupInterface::Plan plan;
+
     bool success = (bool)arm.plan(plan);
 
-    ROS_INFO("Plan (pose goal) %s",success?"":"FAILED");
+    ROS_INFO("Plan (pose goal) %s",success?"SUCCESS":"FAILED");
 
-    if(success)
+    if(success) {
         arm.execute(plan);
+        std::cout<<arm.getCurrentPose("gripper").pose<<std::endl;
+    }
 
-
-    sleep(1);
+        sleep(1);
 
     ros::shutdown();
 
