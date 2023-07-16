@@ -28,6 +28,21 @@
         <joint name="joint2" value="-0.0094" />
         <joint name="joint3" value="-0.0166" />
     </group_state>
+    <group_state name="one" group="arm">
+        <joint name="joint1" value="-0.0716" />
+        <joint name="joint2" value="-0.7608" />
+        <joint name="joint3" value="0.4144" />
+    </group_state>
+    <group_state name="two" group="arm">
+        <joint name="joint1" value="-0.0716" />
+        <joint name="joint2" value="0.3287" />
+        <joint name="joint3" value="-0.7459" />
+    </group_state>
+    <group_state name="three" group="arm">
+        <joint name="joint1" value="-0.0716" />
+        <joint name="joint2" value="1.0989" />
+        <joint name="joint3" value="-1.011" />
+    </group_state>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="base_link" link2="link1" reason="Adjacent" />
     <disable_collisions link1="gripper" link2="link2" reason="Never" />

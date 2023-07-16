@@ -15,6 +15,7 @@ typedef union {
 
 void getMessage(uint8_t* rx_buff, int buffer_size);
 void SendPosition(Serial& ser,f_u8_t* position);
+void SendClaw(Serial& ser, uint8_t claw);
 bool LRC_check(uint8_t* array, size_t size);
 uint8_t LRC_calc(uint8_t* array,uint8_t size);
 

@@ -44,7 +44,7 @@ void getMessage(uint8_t* rx_buff, int buffer_size){
     }
 }
 /**
- * 发送数据到串口
+ * 发送位置数据到串口
  * @param 发送的数据，数据大小
 */
 void SendPosition(Serial& ser,f_u8_t* position){
@@ -66,6 +66,19 @@ void SendPosition(Serial& ser,f_u8_t* position){
     ser.tx_buff[15] = position[2].u8[3];
     ser.tx_buff[16] = LRC_calc(ser.tx_buff,16);
     ser.SerialWrite(17);
+}
+/**
+ * 发送夹爪数据到串口
+ * @param 发送的数据，数据大小
+*/
+void SendClaw(Serial& ser, uint8_t claw){
+    ser.tx_buff[0] = 0x7A;
+    ser.tx_buff[1] = 0x01;
+    ser.tx_buff[2] = 0x04;
+    ser.tx_buff[3] = 0x01;
+    ser.tx_buff[4] = claw;
+    ser.tx_buff[5] = LRC_calc(ser.tx_buff,5);
+    ser.SerialWrite(6);
 }
 
 /**
