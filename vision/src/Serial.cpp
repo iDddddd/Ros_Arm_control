@@ -2,7 +2,7 @@
 // Created by fins on 23-6-29.
 //
 
-#include "Serial.h"
+#include "../include/Serial.h"
 /**
  * 检查串口是否打开
  */
