@@ -1,8 +1,9 @@
 //
-// Created by fins on 23-6-29.
+// Created by fins on 23-7-5.
 //
 
-#include "../include/Serial.h"
+#include "Serial.h"
+
 /**
  * 检查串口是否打开
  */
@@ -10,6 +11,7 @@ void Serial::SerialCheck(){
     fd = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd == -1) /* Error Checking */
         printf("\n  Error! in Opening ttyUSB0  ");
+        //exit(EXIT_FAILURE);
     else
         printf("\n  ttyUSB0 Opened Successfully ");
 }
@@ -41,17 +43,15 @@ void Serial::SerialPortInitialization() {
 /**
  * 写数据
  * @param writeBuffer 需要读进去的数据
- * @return 范围是否发送成功，0不成功，1成功
  */
-bool Serial::SerialWrite(uint8_t length) {
+void Serial::SerialWrite(uint8_t length) {
     ssize_t bytes_written = write(fd, tx_buff, length);
-//    printf("\n  %s written to ttyUSB0", writeBuffer);
-//    printf("\n  %zd Bytes written to ttyUSB0", bytes_written);
-//    printf("\n +----------------------------------+\n\n");
-    if(bytes_written == -1)
-        return SerialWrite(length);
+    if(bytes_written == -1)perror(strerror(errno));
     else
-        return true;
+    {
+        std::cout << "Write " << bytes_written << "bytes" << std::endl;
+        usleep(1000);//发送频率不能太快
+    }
 }
 
 /**
@@ -65,22 +65,23 @@ void Serial::SerialRead()
 
     FD_ZERO(&fs_read);
     FD_SET(fd,&fs_read);
-    bool flag = false;
+
     //使用select实现串口在有数据来时才read
-
-        fs_sel = select(fd+1,&fs_read,NULL,NULL,NULL);
-        if(fs_sel == 1) {
-            len = read(fd, rx_buff, BUFF_SIZE);
-            if(rx_buff[0] == 0x7A && !flag)flag = true;
-            if(flag)getMessage(rx_buff, len);
-        }
-        else{
-            FD_ZERO(&fs_read);
-            FD_SET(fd,&fs_read);
-            std::cout << "*** error occur in reading buffer ***" << std::endl;
-        }
-
-
+    // while (FD_ISSET(fd,&fs_read))
+    // {
+    fs_sel = select(fd+1,&fs_read,NULL,NULL,NULL);
+    if(fs_sel == 1) {
+        len = read(fd, rx_buff, BUFF_SIZE);
+    }
+    else{
+        FD_ZERO(&fs_read);
+        FD_SET(fd,&fs_read);
+        std::cout << "*** error occur in reading buffer ***" << std::endl;
+        // continue;
+    }
+    // }
+    // perror(strerror(errno));
+    // std::cout <<"Loop finished"<<std::endl;
 }
 
 /**
@@ -90,48 +91,3 @@ void Serial::SerialPortDeinitialization() {
     close(fd);
 }
 
-bool LRC_check(uint8_t* array, size_t size){
-    uint8_t sum = 0;
-    for (size_t i = 0; i < size - 1; i++) {
-        sum += array[i];
-    }
-    if (sum == array[size - 1]) return true;
-    else return false;
-}
-
-
-
-
-void getMessage(uint8_t* rx_buff, int buffer_size){
-    int msg_ptr2{0};
-    uint8_t message2[82];
-    static int res_len = 0;
-    static bool flag_getlen = true;
-
-    for (int i = 0; i < buffer_size; i++){
-        if (res_len > 0){
-            if (res_len == 1 && flag_getlen){
-                res_len += rx_buff[i] + 1; // data length + byte of content + LRC byte
-                flag_getlen = false;
-            }
-            message2[msg_ptr2] = rx_buff[i];
-            msg_ptr2 ++;
-            res_len --;
-        }
-        else {
-            /* finish receiving one single message2 */
-            if (msg_ptr2 > 0) {
-                for(int j = 0; j < msg_ptr2; j++)
-                    std::cout << std::hex << message2[j] << std::endl;
-                std::cout<< std::endl;
-                //printHexArray(message2, msg_ptr);
-                msg_ptr2 = 0;
-            }
-            /* start receiving one single message2 */
-            if (rx_buff[i] == 0x7A) {
-                res_len = 3; // distance between byte of head and byte of length
-                flag_getlen = true;
-            }
-        }
-    }
-}
