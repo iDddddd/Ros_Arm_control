@@ -3,11 +3,6 @@
      Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot name="easyarm_description">
-    <link name="world"/>
-	<joint name="fixed" type="fixed">
- 		 <parent link="world"/>
-		 <child link="base_link"/>
-	</joint>
     <link name="base_link">
         <inertial>
             <origin xyz="-0.00010017 -0.043183 0.019173" rpy="0 0 0" />
@@ -220,3 +215,4 @@
         </plugin>
     </gazebo>
 </robot>
+

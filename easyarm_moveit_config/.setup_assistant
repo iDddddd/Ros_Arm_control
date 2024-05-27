@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: easyarm_description
+    relative_path: urdf/easyarm_description.urdf
+    xacro_args: ""
+  SRDF:
+    relative_path: config/easyarm_description.srdf
+  CONFIG:
+    author_name: dqc
+    author_email: 2539647417@qq.com
+    generated_timestamp: 1716813255
