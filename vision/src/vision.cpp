@@ -8,38 +8,40 @@
 #include "opencv2/opencv.hpp"
 #include "cv_bridge/cv_bridge.h"
 #include <boost/thread/thread.hpp>
-#include "Serial.h"
-#include "UpComputer.h"
+#include <std_msgs/Float32MultiArray.h>
 
 using namespace std;
 static cv::Mat usb_img;
 static const double Kp = 0.5;
 
-void to_blue(double &rcm_alpha, double &rcm_beta, double &rcm_trans);
+vector<float> to_blue();
 
-void to_green(double &rcm_alpha, double &rcm_beta, double &rcm_trans);
+vector<float> to_green();
 
-void to_yellow(double &rcm_alpha, double &rcm_beta, double &rcm_trans);
+vector<float> to_yellow();
+
+vector<float> to_red();
 
 cv::Point2d detectCenter(cv::Mat image);
 
 int detectHSColor(const cv::Mat &image, double minHue, double maxHue, double minSat, double maxSat, cv::Mat &mask);
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "real_rcm_keyboard_node");
+    ros::init(argc, argv, "vision_node");
     ros::NodeHandle nh;
+    ros::Publisher pub = nh.advertise<std_msgs::Float32MultiArray>("vision", 1000);
 
     /********************************************** CAMERA init *********************************************/
     cv::namedWindow("usb_cam", cv::WINDOW_AUTOSIZE);
     //打开摄像头
-    cv::VideoCapture cap(0);
+    cv::VideoCapture cap(2);
     if (!cap.isOpened()) {
         std::cout << "Error opening video stream or file" << std::endl;
         return -1;
     }
 
     while (ros::ok()) {
-        char key_input;
+        int key_input;
         cap >> usb_img;
         if (usb_img.empty()) {
             std::cout << "empty frame" << std::endl;
@@ -51,6 +53,16 @@ int main(int argc, char **argv) {
         // cv::circle(usb_img, cv::Point(320, 240), 5, cv::Scalar(0, 0, 255), -1);
         //显示图像
         cv::imshow("usb_cam", usb_img);
+
+        //vector<float> blue_center = to_blue();
+        //vector<float> green_center = to_green();
+        //vector<float> yellow_center = to_yellow();
+        vector<float> red_center = to_red();
+        if (!red_center.empty()) {
+            std_msgs::Float32MultiArray msg;
+            msg.data = red_center;
+            pub.publish(msg);
+        }
         key_input = cv::waitKey(10);
         if (key_input == 'q') {
             break;
@@ -92,49 +104,60 @@ int detectHSColor(const cv::Mat &image, double minHue, double maxHue, double min
     } else {
         hueMask = mask1 | mask2;
     }
+    //裁减图片
+
+
+
     cv::Mat satMask;
     inRange(channels[1], minSat, maxSat, satMask);
     mask = hueMask & satMask;
+    //过滤噪声
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, kernel);
+    cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, kernel);
+    //在原图像上用对应颜色矩形框出色块
+    image.copyTo(image);
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(mask.clone(), contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    cv::drawContours(image, contours, -1, cv::Scalar(0, 0, 255), 2);
+    cv::imshow("result", image);
+
     //检测色块的大小
     int nonZeroPixels = cv::countNonZero(mask);
     return nonZeroPixels;
 }
 
-
-void to_blue(double &rcm_alpha, double &rcm_beta, double &rcm_trans) {
-
-    double Kp = 0.6;
+vector<float> to_blue() {
     double minHue = 100.0; // 蓝色的最小色调值
     double maxHue = 140.0; // 蓝色的最大色调值
     double minSat = 100.0; // 饱和度的最小值
     double maxSat = 255.0; // 饱和度的最大值
     cv::Mat mask; // 函数返回的掩膜
-    cv::Mat world_mask;
     // 调用函数
     int nonZeroPixels = detectHSColor(usb_img, minHue, maxHue, minSat, maxSat, mask);
     if (nonZeroPixels == 0) {
         cout << "not found blue" << endl;
         if (cv::getWindowProperty("mask", cv::WND_PROP_AUTOSIZE) == -1) {
-            return;
+            return {};
         } else {
             cv::destroyWindow("mask");
-            return;
+            return {};
         }
     }
     cv::imshow("mask", mask);
     cv::Point2d blue_center = detectCenter(mask);
+    blue_center.x = blue_center.x - 320;
+    blue_center.y = 240 - blue_center.y;
     cout << "blue_center: " << blue_center << endl;
     cout << "blue_size: " << nonZeroPixels << endl;
-    rcm_alpha += (0.01 * (blue_center.x - 320) / 180.0 * M_PI) * Kp;
-    rcm_beta += (0.01 * (blue_center.y - 240) / 180.0 * M_PI) * Kp;
-    rcm_trans += 0.01 * Kp;
+
+    // 返回中心点坐标
+    return vector<float>{static_cast<float>(blue_center.x), static_cast<float>(blue_center.y)};
 }
 
-void to_green(double &rcm_alpha, double &rcm_beta, double &rcm_trans) {
-
-    double Kp = 0.5;
-    double minHue = 30.0; // 蓝色的最小色调值
-    double maxHue = 60.0;// 蓝色的最大色调值
+vector<float> to_green() {
+    double minHue = 40.0; // 绿色的最小色调值
+    double maxHue = 80.0; // 绿色的最大色调值
     double minSat = 100.0; // 饱和度的最小值
     double maxSat = 255.0; // 饱和度的最大值
     cv::Mat mask; // 函数返回的掩膜
@@ -143,27 +166,28 @@ void to_green(double &rcm_alpha, double &rcm_beta, double &rcm_trans) {
     if (nonZeroPixels == 0) {
         cout << "not found green" << endl;
         if (cv::getWindowProperty("mask", cv::WND_PROP_AUTOSIZE) == -1) {
-            return;
+            return {};
         } else {
             cv::destroyWindow("mask");
-            return;
+            return {};
         }
     }
     cv::imshow("mask", mask);
     cv::Point2d green_center = detectCenter(mask);
+    green_center.x = green_center.x - 320;
+    green_center.y = 240 - green_center.y;
     cout << "green_center: " << green_center << endl;
     cout << "green_size: " << nonZeroPixels << endl;
-    rcm_alpha += (0.01 * (green_center.x - 320) / 180.0 * M_PI) * Kp;
-    rcm_beta += (0.01 * (green_center.y - 240) / 180.0 * M_PI) * Kp;
-    rcm_trans += 0.01 * Kp;
+
+    // 返回中心点坐标
+    return vector<float>{static_cast<float>(green_center.x), static_cast<float>(green_center.y)};
+
 }
 
 
-void to_yellow(double &rcm_alpha, double &rcm_beta, double &rcm_trans) {
-
-    double Kp = 0.4;
-    double minHue = 0.0; // 黄色的最小色调值
-    double maxHue = 30.0; // 黄色的最大色调值
+vector<float> to_yellow() {
+    double minHue = 20.0; // 黄色的最小色调值
+    double maxHue = 40.0; // 黄色的最大色调值
     double minSat = 100.0; // 饱和度的最小值
     double maxSat = 255.0; // 饱和度的最大值
     cv::Mat mask; // 函数返回的掩膜
@@ -172,17 +196,47 @@ void to_yellow(double &rcm_alpha, double &rcm_beta, double &rcm_trans) {
     if (nonZeroPixels == 0) {
         cout << "not found yellow" << endl;
         if (cv::getWindowProperty("mask", cv::WND_PROP_AUTOSIZE) == -1) {
-            return;
+            return {};
         } else {
             cv::destroyWindow("mask");
-            return;
+            return {};
         }
     }
     cv::imshow("mask", mask);
     cv::Point2d yellow_center = detectCenter(mask);
+    yellow_center.x = yellow_center.x - 320;
+    yellow_center.y = 240 - yellow_center.y;
     cout << "yellow_center: " << yellow_center << endl;
     cout << "yellow_size: " << nonZeroPixels << endl;
-    rcm_alpha += (0.01 * (yellow_center.x - 320) / 180.0 * M_PI) * Kp;
-    rcm_beta += (0.01 * (yellow_center.y - 240) / 180.0 * M_PI) * Kp;
-    rcm_trans += 0.01 * Kp;
+
+    // 返回中心点坐标
+    return vector<float>{static_cast<float>(yellow_center.x), static_cast<float>(yellow_center.y)};
+}
+
+vector<float> to_red(){
+    double minHue = 0.0; // 红色的最小色调值
+    double maxHue = 10.0; // 红色的最大色调值
+    double minSat = 100.0; // 饱和度的最小值
+    double maxSat = 255.0; // 饱和度的最大值
+    cv::Mat mask; // 函数返回的掩膜
+    // 调用函数
+    int nonZeroPixels = detectHSColor(usb_img, minHue, maxHue, minSat, maxSat, mask);
+    if (nonZeroPixels == 0) {
+        cout << "not found red" << endl;
+        if (cv::getWindowProperty("mask", cv::WND_PROP_AUTOSIZE) == -1) {
+            return {};
+        } else {
+            cv::destroyWindow("mask");
+            return {};
+        }
+    }
+    cv::imshow("mask", mask);
+    cv::Point2d red_center = detectCenter(mask);
+    red_center.x = red_center.x - 320;
+    red_center.y = 240 - red_center.y;
+    cout << "red_center: " << red_center << endl;
+    cout << "red_size: " << nonZeroPixels << endl;
+
+    // 返回中心点坐标
+    return vector<float>{static_cast<float>(red_center.x), static_cast<float>(red_center.y)};
 }

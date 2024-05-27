@@ -25,8 +25,8 @@ void Serial::SerialPortInitialization() {
 
     struct termios SerialPortSettings;
     tcgetattr(fd, &SerialPortSettings);
-    //Set the baud rate to 115200
-    SerialPortSettings.c_cflag = B115200 | CS8 | CLOCAL | CREAD;
+    //Set the baud rate to 9600
+    SerialPortSettings.c_cflag = B9600 | CS8 | CLOCAL | CREAD;
     SerialPortSettings.c_iflag = 0; // IGNPARICRNL
     SerialPortSettings.c_oflag = 0;
     SerialPortSettings.c_lflag = 0;
@@ -37,7 +37,7 @@ void Serial::SerialPortInitialization() {
     if ((tcsetattr(fd, TCSANOW, &SerialPortSettings)) != 0)
         printf("\n  ERROR ! in Setting attributes");
     else
-        printf("\n  BaudRate = 115200 \n  StopBits = 1 \n  Parity   = none\n" );
+        printf("\n  BaudRate = 9600 \n  StopBits = 1 \n  Parity   = none\n" );
 }
 
 /**

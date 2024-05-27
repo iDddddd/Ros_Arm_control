@@ -5,19 +5,25 @@
 #include "Control.h"
 using namespace std;
 
-int main()
-{
-    servo1.setAngle(500);
-    servo2.setAngle(1000);
-    servo3.setAngle(1500);
-    servo4.setAngle(2000);
-    servo5.setAngle(2500);
 
-    while (true)
-    {
-        control.SendPosition(1000);
-        sleep(1);
+
+void visionCallback(const std_msgs::Float32MultiArray::ConstPtr& msg) {
+    if(msg->data.size() == 2) {
+        float x = msg->data[0];
+        float y = msg->data[1];
+        //control.SetPosition(x, y, 0.11);
     }
+}
+
+int main(int argc, char **argv) {
+    ros::init(argc, argv, "control_node");
+    ros::NodeHandle nh;
+    ros::Subscriber sub = nh.subscribe("vision", 1000, &visionCallback);
+
+    //control.SetAngle(new uint16_t[6]{1500,1500,1500,1500,1500,1500});
+    //control.SendAngle(900);
+    control.SeriesAction();
+
 
     return 0;
 }

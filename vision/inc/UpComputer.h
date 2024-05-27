@@ -5,10 +5,17 @@
 #define SRC_UPCOMPUTER_H
 
 #include "iostream"
-#include "Serial.h"
 #include <map>
+#include <cmath>
 
-#define uint8_t int
+#include "Serial.h"
+
+const float alpha = -60;
+const float dletaz = 0.03;
+const float l0 = 0.1035;
+const float l1 = 0.097;
+const float l2 = 0.135;
+
 typedef union {
     float f;
     uint8_t u8[4];
@@ -21,6 +28,7 @@ struct Servo_Object_t {
     Servo_Object_t *next;
 };
 
+void delay(int milliseconds);
 
 class Servo {
 public:
@@ -42,26 +50,32 @@ private:
 class Control {
     Serial ser;
     Servo_Object_t *head;
+    f_u8_t distance_x;
+    f_u8_t distance_y;
+    f_u8_t theta;
 public:
     explicit Control(Servo_Object_t *_head) {
         head = _head;
     }
 
-    void SendPosition(uint16_t time);
+    void SendAngle(uint16_t time);
+    void SetAngle(uint16_t *angle);
+    void PrintAngle();
 
-    void SetPosition(const uint16_t *position);
+    void SetClaw(uint16_t _angle);
+
+    void SetPosition(float _x, float _y, float _z);
+    void SetDistance(float _x, float _y, float _theta);
+    void SendDistance();
+    void SerRead();
+    void SetSendID(uint8_t id);
+    void SendAction(uint8_t action);
+    void SeriesAction();
+
+    static bool LRC_check(const uint8_t *array, size_t size);
+    static uint8_t LRC_calc(const uint8_t *array, uint8_t size);
+
 };
 
-void getMessage(uint8_t *rx_buff, uint8_t buffer_size);
-
-void SendMessage(Serial &ser, uint8_t *message);
-
-void SendAction(Serial &ser, uint8_t action);
-
-void SendPosition(Serial &ser, f_u8_t *position);
-
-bool LRC_check(uint8_t *array, size_t size);
-
-uint8_t LRC_calc(uint8_t *array, uint8_t size);
 
 #endif //SRC_UPCOMPUTER_H
