@@ -8,7 +8,7 @@ Servo_Object_t *Servo::_head = nullptr;
 uint8_t Servo::count = 0;
 
 
-void delay(int milliseconds){
+void delay(int milliseconds) {
     usleep(milliseconds * 1000);
 }
 
@@ -68,12 +68,12 @@ void Control::SendAngle(uint16_t time) {
         ser.tx_buff[9 + i * 3] = temp->servo_object->angle >> 8;
         temp = temp->next;
     }
-    for(int i = 0; i < 7 + 3 * Servo::count; i++) {
+    for (int i = 0; i < 7 + 3 * Servo::count; i++) {
         printf("%x ", ser.tx_buff[i]);
     }
     printf("\n");
     ser.SerialWrite(7 + 3 * Servo::count);
-    delay(time+100);
+    delay(time + 100);
 }
 
 void Control::SetAngle(uint16_t *angle) {
@@ -89,7 +89,9 @@ double rad2deg(double rad) {
     return rad * 180.0 / M_PI;
 }
 
-void Control::SetPosition(float _x, float _y, float _z) {
+void Control::SetPosition(float _x, float _y, float _z, bool isClaw) {
+    float alpha = -60;
+    retry:
     float y = _z - dletaz * cos(alpha * M_PI / 180.0);
     float x = sqrt(pow(_x, 2) + pow(_y, 2)) + dletaz * sin(alpha * M_PI / 180.0);
 
@@ -105,13 +107,20 @@ void Control::SetPosition(float _x, float _y, float _z) {
     float L = sqrtf(pow(m, 2) + pow(n, 2));
 
     if (L < l0 + l1 && L > sqrt(pow(l0, 2) + pow(l1, 2))) {
-        std::cout << "Solution condition is satisfied" << std::endl;
+        std::cout << "When alpha = " << alpha << " , Solution condition is satisfied" << std::endl;
     } else {
-        std::cout << "Solution condition is not satisfied" << std::endl;
-        return;
+        if (alpha < -20) {
+            alpha++;
+            std::cout << "Retry alpha = " << alpha << std::endl;
+            goto retry;
+        } else {
+            std::cout << "Solution condition is not satisfied" << std::endl;
+            return;
+        }
     }
 
     float t1 = atanf(n / m);
+    if (m < 0) t1 += M_PI;
     float cost2 = (pow(l0, 2) + pow(L, 2) - pow(l1, 2)) / (2 * l0 * L);
     float t2 = acosf(cost2);
     float theta1 = (t1 + t2) * 180 / M_PI;
@@ -132,10 +141,17 @@ void Control::SetPosition(float _x, float _y, float _z) {
 
     //std::cout << theta1 + theta2 + theta3 << std::endl;
     //std::cout << pulse3 << std::endl;
-
+    std::cout << "theta1: " << theta1 << " theta2: " << theta2 << " theta3: " << theta3 << " theta4: " << theta4
+              << std::endl;
     std::cout << "Pulse six equals, " << pulse4 << "; Pulse five equals, " << pulse1
-                << "; Pulse four equals, " << pulse2 << "; Pulse three equals, " << pulse3<<std::endl;
-    SetAngle(new uint16_t[6]{600, 1500,(uint16_t)pulse3, (uint16_t)pulse2, (uint16_t)pulse1, (uint16_t)pulse4});
+              << "; Pulse four equals, " << pulse2 << "; Pulse three equals, " << pulse3 << std::endl;
+    if (isClaw)
+        SetAngle(new uint16_t[6]{1500, 1500, (uint16_t) pulse3, (uint16_t) pulse2, (uint16_t) pulse1,
+                                 (uint16_t) pulse4});
+    else
+        SetAngle(
+                new uint16_t[6]{600, 1500, (uint16_t) pulse3, (uint16_t) pulse2, (uint16_t) pulse1, (uint16_t) pulse4});
+
 
 }
 
@@ -149,10 +165,9 @@ void Control::PrintAngle() {
 }
 
 void Control::SetClaw(uint16_t _angle) {
-    uint16_t angles[6] = {_angle,1500,1500,1500,1500,1500};
+    uint16_t angles[6] = {_angle, 1500, 1500, 1500, 1500, 1500};
     SetAngle(angles);
 }
-
 
 
 void Control::SerRead() {
@@ -235,17 +250,95 @@ void Control::SendDistance() {
     ser.tx_buff[16] = LRC_calc(ser.tx_buff, 16);
     ser.SerialWrite(17);
 }
+
 void Control::SeriesAction() {
-    SetAngle(new uint16_t[6]{1500,1500,1500,1500,1500,1500});
+    SetAngle(new uint16_t[6]{1500, 1500, 1500, 1500, 1500, 1500});
     SendAngle(900);
     SetAngle(new uint16_t[6]{600});
     SendAngle(900);
-    SetPosition(0,0.26,-0.03);
+    SetPosition(0, 0.26, -0.03, false);
     SendAngle(900);
     SetAngle(new uint16_t[6]{1500});
     SendAngle(900);
-    SetAngle(new uint16_t[6]{1500,1500,1500,1500,1500,1500});
+    SetAngle(new uint16_t[6]{1500, 1500, 1500, 1500, 1500, 1500});
     SendAngle(900);
+
+}
+
+void Control::SeriesAction_1() {
+    float center_x = 0.0;
+    float center_y = 0.0;
+    SetAngle(new uint16_t[6]{900, 1500, 1500, 1500, 1500, 1500});//复位
+    SendAngle(1000);
+    while (ros::ok()) {
+        std::cout << "x: " << _x << " y: " << _y << std::endl;
+        if (_x != 0.0 || _y != 0.0) {
+            center_x = _x / 1000.0f;
+            center_y = _y / 1000.0f;
+            break;
+        }
+        ros::spinOnce();
+    }
+    SetPosition(center_x, center_y + 0.26, 0.02, false);
+    SendAngle(1000);
+    SetPosition(center_x, center_y + 0.26, 0.02, true);//抓取
+    SendAngle(1000);
+    SetAngle(new uint16_t[6]{1500, 1500, 1500, 1500, 1500, 1500});//复位
+    SendAngle(1000);
+    SetPosition(0.24, 0, 0.02, true);//抓取
+    SendAngle(1000);
+    SetPosition(0.24, 0, -0.01, true);//抓取
+    SendAngle(1000);
+    SetPosition(0.24, 0, -0.01, false);//抓取
+    SendAngle(1000);
+    SetPosition(0.24, 0, 0.02, false);//抓取
+    SendAngle(1000);
+    SetAngle(new uint16_t[6]{900, 1500, 1500, 1500, 1500, 1500});//复位
+    SendAngle(1000);
+}
+
+void Control::SeriesAction_2() {
+
+    SetAngle(new uint16_t[6]{900, 1500, 1500, 1500, 1500, 1500});//复位
+    SendAngle(1000);
+    SetPosition(0.0, 0.25, 0.02, false);//抓取
+    SendAngle(1000);
+    SetPosition(0.0, 0.25, 0.02, true);//抓取
+    SendAngle(1000);
+    SetAngle(new uint16_t[6]{1500, 1500, 1500, 1500, 1500, 1500});//复位
+    SendAngle(1000);
+    SetPosition(0.24, 0, 0.02, true);//抓取
+    SendAngle(1000);
+    SetPosition(0.24, 0, -0.01, true);//抓取
+    SendAngle(1000);
+    SetPosition(0.24, 0, -0.01, false);//抓取
+    SendAngle(1000);
+    SetPosition(0.24, 0, 0.02, false);//抓取
+    SendAngle(1000);
+    SetAngle(new uint16_t[6]{900, 1500, 1500, 1500, 1500, 1500});//复位
+    SendAngle(1000);
+}
+
+void Control::SeriesAction_3() {
+
+    SetAngle(new uint16_t[6]{900, 1500, 1500, 1500, 1500, 1500});//复位
+    SendAngle(1000);
+    SetPosition(0.24, 0, 0.02, false);//抓取
+    SendAngle(1000);
+    SetPosition(0.24, 0, -0.01, false);//抓取
+    SendAngle(1000);
+    SetPosition(0.24, 0, -0.01, true);//抓取
+    SendAngle(1000);
+    SetPosition(0.24, 0, 0.02, true);//抓取
+    SendAngle(1000);
+    SetAngle(new uint16_t[6]{1500, 1500, 1500, 1500, 1500, 1500});//复位
+    SendAngle(1000);
+    SetPosition(0.0, 0.25, 0.02, true);//抓取
+    SendAngle(1000);
+    SetPosition(0.0, 0.25, 0.02, false);//抓取
+    SendAngle(1000);
+    SetAngle(new uint16_t[6]{900, 1500, 1500, 1500, 1500, 1500});//复位
+    SendAngle(1000);
 
 }
 
@@ -266,4 +359,5 @@ uint8_t Control::LRC_calc(const uint8_t *array, uint8_t size) {
     }
     return LRC;
 }
+
 

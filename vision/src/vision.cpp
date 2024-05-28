@@ -49,6 +49,21 @@ int main(int argc, char **argv) {
         }
         //设置大小
         cv::resize(usb_img, usb_img, cv::Size(640, 480));
+        // 定义裁剪区域的左上角点和右下角点
+        cv::Point topLeft(80, 40);
+        cv::Point bottomRight(560, 440);
+
+        // 计算裁剪区域的宽度和高度
+        int roiWidth = bottomRight.x - topLeft.x;
+        int roiHeight = bottomRight.y - topLeft.y;
+
+        // 创建一个cv::Rect对象来定义裁剪区域
+        cv::Rect roi(topLeft.x, topLeft.y, roiWidth, roiHeight);
+
+        // 使用cv::Mat::operator()来裁剪图像
+        cv::Mat croppedImg = usb_img(roi);
+        cv::resize(croppedImg, croppedImg, cv::Size(640, 480));
+        usb_img = croppedImg.clone();
         //画中心点
         // cv::circle(usb_img, cv::Point(320, 240), 5, cv::Scalar(0, 0, 255), -1);
         //显示图像
@@ -57,12 +72,24 @@ int main(int argc, char **argv) {
         //vector<float> blue_center = to_blue();
         //vector<float> green_center = to_green();
         //vector<float> yellow_center = to_yellow();
-        vector<float> red_center = to_red();
-        if (!red_center.empty()) {
+//        vector<float> red_center = to_red();
+//        if (!red_center.empty()) {
+//            std_msgs::Float32MultiArray msg;
+//            msg.data = red_center;
+//            pub.publish(msg);
+//        }
+        vector<float> green_center = to_green();
+        if (!green_center.empty()) {
             std_msgs::Float32MultiArray msg;
-            msg.data = red_center;
+            msg.data = green_center;
             pub.publish(msg);
         }
+//        vector<float> blue_center = to_blue();
+//        if (!blue_center.empty()) {
+//            std_msgs::Float32MultiArray msg;
+//            msg.data = blue_center;
+//            pub.publish(msg);
+//        }
         key_input = cv::waitKey(10);
         if (key_input == 'q') {
             break;
@@ -104,23 +131,35 @@ int detectHSColor(const cv::Mat &image, double minHue, double maxHue, double min
     } else {
         hueMask = mask1 | mask2;
     }
-    //裁减图片
-
-
 
     cv::Mat satMask;
     inRange(channels[1], minSat, maxSat, satMask);
     mask = hueMask & satMask;
     //过滤噪声
-    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
     cv::morphologyEx(mask, mask, cv::MORPH_OPEN, kernel);
     cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, kernel);
     //在原图像上用对应颜色矩形框出色块
     image.copyTo(image);
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(mask.clone(), contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    cv::drawContours(image, contours, -1, cv::Scalar(0, 0, 255), 2);
-    cv::imshow("result", image);
+    if(minHue == 0.0 && maxHue == 10.0){
+        cv::drawContours(image, contours, -1, cv::Scalar(0, 0, 255), 2);
+    } else if(minHue == 20.0 && maxHue == 40.0){
+        cv::drawContours(image, contours, -1, cv::Scalar(0, 255, 255), 2);
+    } else if(minHue == 40.0 && maxHue == 80.0){
+        cv::drawContours(image, contours, -1, cv::Scalar(0, 255, 0), 2);
+    } else if(minHue == 100.0 && maxHue == 110.0){
+        cv::drawContours(image, contours, -1, cv::Scalar(255, 0, 0), 2);
+    }
+//    // 输出物块的边长
+//    for (int i = 0; i < contours.size(); i++) {
+//        cv::Rect boundingRect = cv::boundingRect(contours[i]);
+//        std::cout << "Object " << i << ": width = " << boundingRect.width << ", height = " << boundingRect.height << std::endl;
+//    }
+    //输出矩形框的边长
+
+    //cv::imshow("result", image);
 
     //检测色块的大小
     int nonZeroPixels = cv::countNonZero(mask);
@@ -129,7 +168,7 @@ int detectHSColor(const cv::Mat &image, double minHue, double maxHue, double min
 
 vector<float> to_blue() {
     double minHue = 100.0; // 蓝色的最小色调值
-    double maxHue = 140.0; // 蓝色的最大色调值
+    double maxHue = 110.0; // 蓝色的最大色调值
     double minSat = 100.0; // 饱和度的最小值
     double maxSat = 255.0; // 饱和度的最大值
     cv::Mat mask; // 函数返回的掩膜
@@ -150,7 +189,12 @@ vector<float> to_blue() {
     blue_center.y = 240 - blue_center.y;
     cout << "blue_center: " << blue_center << endl;
     cout << "blue_size: " << nonZeroPixels << endl;
-
+    //将坐标显示在图像右上角
+    cv::putText(usb_img, "blue_center_X: " + to_string(blue_center.x), cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                cv::Scalar(255, 0, 0), 1, 8);
+    cv::putText(usb_img, "blue_center_Y: " + to_string(blue_center.y), cv::Point(10, 120), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                cv::Scalar(255, 0, 0), 1, 8);
+    cv::imshow("usb_cam", usb_img);
     // 返回中心点坐标
     return vector<float>{static_cast<float>(blue_center.x), static_cast<float>(blue_center.y)};
 }
@@ -178,10 +222,14 @@ vector<float> to_green() {
     green_center.y = 240 - green_center.y;
     cout << "green_center: " << green_center << endl;
     cout << "green_size: " << nonZeroPixels << endl;
-
+    //将坐标显示在图像右上角
+    cv::putText(usb_img, "green_center_X: " + to_string(green_center.x), cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                cv::Scalar(0, 255, 0), 1, 8);
+    cv::putText(usb_img, "green_center_Y: " + to_string(green_center.y), cv::Point(10, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                cv::Scalar(0, 255, 0), 1, 8);
+    cv::imshow("usb_cam", usb_img);
     // 返回中心点坐标
     return vector<float>{static_cast<float>(green_center.x), static_cast<float>(green_center.y)};
-
 }
 
 
@@ -230,13 +278,18 @@ vector<float> to_red(){
             return {};
         }
     }
-    cv::imshow("mask", mask);
+    //cv::imshow("mask", mask);
     cv::Point2d red_center = detectCenter(mask);
     red_center.x = red_center.x - 320;
     red_center.y = 240 - red_center.y;
     cout << "red_center: " << red_center << endl;
     cout << "red_size: " << nonZeroPixels << endl;
-
+    //将坐标显示在图像右上角
+    cv::putText(usb_img, "red_center_X: " + to_string(red_center.x), cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                cv::Scalar(0, 0, 255), 1, 8);
+    cv::putText(usb_img, "red_center_Y: " + to_string(red_center.y), cv::Point(10, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                cv::Scalar(0, 0, 255), 1, 8);
+    cv::imshow("usb_cam", usb_img);
     // 返回中心点坐标
     return vector<float>{static_cast<float>(red_center.x), static_cast<float>(red_center.y)};
 }

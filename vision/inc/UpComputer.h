@@ -9,8 +9,9 @@
 #include <cmath>
 
 #include "Serial.h"
+#include <ros/ros.h>
 
-const float alpha = -60;
+
 const float dletaz = 0.03;
 const float l0 = 0.1035;
 const float l1 = 0.097;
@@ -53,6 +54,7 @@ class Control {
     f_u8_t distance_x;
     f_u8_t distance_y;
     f_u8_t theta;
+
 public:
     explicit Control(Servo_Object_t *_head) {
         head = _head;
@@ -64,17 +66,22 @@ public:
 
     void SetClaw(uint16_t _angle);
 
-    void SetPosition(float _x, float _y, float _z);
+    void SetPosition(float _x, float _y, float _z,bool isClaw);
     void SetDistance(float _x, float _y, float _theta);
     void SendDistance();
     void SerRead();
     void SetSendID(uint8_t id);
     void SendAction(uint8_t action);
     void SeriesAction();
+    void SeriesAction_1();
+    void SeriesAction_2();
+    void SeriesAction_3();
 
     static bool LRC_check(const uint8_t *array, size_t size);
     static uint8_t LRC_calc(const uint8_t *array, uint8_t size);
 
+    float _x;
+    float _y;
 };
 
 
